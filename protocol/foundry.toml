@@ -4,7 +4,7 @@
   verbosity = 3
   src = 'contracts'
   out = 'artifacts-foundry'
-  libs = ['node_modules', 'lib']
+  libs = ['node_modules', '../lib']
   test = 'test/forge'
   cache_path = 'cache-foundry'
   gas_reports = ["*"]
