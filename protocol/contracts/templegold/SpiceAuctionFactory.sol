@@ -39,10 +39,11 @@ contract SpiceAuctionFactory is ISpiceAuctionFactory, TempleElevatedAccess {
     function createAuction(address spiceToken, string memory name) external override onlyElevatedAccess returns (address) {
         if (spiceToken == address(0)) { revert CommonEventsAndErrors.InvalidAddress(); }
         if (spiceToken == templeGold) { revert CommonEventsAndErrors.InvalidParam(); }
+        //q- Theres no check for if spiceToken is equal to templeToken?
         SpiceAuction spiceAuction = new SpiceAuction(templeGold, spiceToken, daoExecutor, name);
         bytes32 pairId = _getPairHash(spiceToken);
         /// @dev not checking pair address exists to allow overwrite in case of a migration
-        deployedAuctions[pairId] = address(spiceAuction);
+        deployedAuctions[pairId] = address(spiceAuction); //q- Is it possible for 2 seperate tokens to have the same pairId?
         emit AuctionCreated(pairId, address(spiceAuction));
         return address(spiceAuction);
     }
@@ -52,6 +53,8 @@ contract SpiceAuctionFactory is ISpiceAuctionFactory, TempleElevatedAccess {
      * @param spiceToken Spice Token
      * @return Address of auction contract
      */
+     
+     //@good
     function findAuctionForSpiceToken(address spiceToken) external override view returns (address) {
         bytes32 pairId = _getPairHash(spiceToken);
         return deployedAuctions[pairId];
@@ -66,6 +69,8 @@ contract SpiceAuctionFactory is ISpiceAuctionFactory, TempleElevatedAccess {
         return _getPairHash(spiceToken);
     }
 
+    //q- I'm unsure about this, come back later
+    //q- Is it possible for pairID to be more than 32 bytes?
     function _getPairHash(address _spiceToken) private view returns (bytes32 pairId) {
         if (templeGold < _spiceToken) {
             pairId = keccak256(abi.encodePacked(templeGold, _spiceToken));

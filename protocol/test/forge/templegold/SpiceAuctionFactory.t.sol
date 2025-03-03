@@ -16,7 +16,7 @@ contract SpiceAuctionFactoryTestBase is TempleGoldCommon {
     TempleGold public templeGold;
     
     function setUp() public {
-        fork("arbitrum_one", forkBlockNumber);
+        fork("arbitrum_one_sepolia", forkBlockNumber);
 
         ITempleGold.InitArgs memory initArgs;
         initArgs.executor = executor;

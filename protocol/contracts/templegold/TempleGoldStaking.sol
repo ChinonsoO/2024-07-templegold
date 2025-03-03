@@ -177,6 +177,8 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
      * @notice Distributed TGLD rewards minted to this contract to stakers
      * @dev This starts another epoch of rewards distribution. Calculates new `rewardRate` from any left over rewards up until now
      */
+
+     //q- why are we passing in address(0) and 0?
     function distributeRewards() updateReward(address(0), 0) external {
         if (distributionStarter != address(0) && msg.sender != distributionStarter) 
             { revert CommonEventsAndErrors.InvalidAccess(); }
@@ -198,6 +200,7 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
      * @param account The address to get votes balance
      * @return The number of current votes for `account`
      */
+     //q- what are checkpoints?
     function getCurrentVotes(address account) external override view returns (uint256) {
         uint256 nCheckpoints = numCheckpoints[account];
         return nCheckpoints > 0 ? _checkpoints[account][nCheckpoints - 1].votes : 0;
@@ -257,7 +260,11 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
      * @param _for Account to stake for
      * @param _amount Amount of staking token
      */
+    
+    //@audit - not checking _for != address(0)  allows for griefing attacks
     function stakeFor(address _for, uint256 _amount) public whenNotPaused {
+        //q- Do we check if for == msg.sender?
+        //a- we allow staking for another account
         if (_amount == 0) revert CommonEventsAndErrors.ExpectedNonZero();
         
         // pull tokens and apply stake
@@ -391,6 +398,8 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
      * @param staker Staking account
      * @param index Index
      */
+    //q- why can anyone call this function?
+    //q- Can't we just call getReward for another staker to end their stake early?
     function getReward(address staker, uint256 index) external override updateReward(staker, index) {
         _getReward(staker, staker, index);
     }
@@ -426,8 +435,8 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
         if (amount > 0) {
             claimableRewards[staker][index] = 0;
             rewardToken.safeTransfer(rewardsToAddress, amount);
-            emit RewardPaid(staker, rewardsToAddress, index, amount);
         }
+            emit RewardPaid(staker, rewardsToAddress, index, amount);
     }
 
     function _withdrawFor(
@@ -592,7 +601,7 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
             rewardData.rewardPerTokenStored = uint216(_rewardPerToken());
             rewardData.lastUpdateTime = uint40(_lastTimeRewardApplicable(rewardData.periodFinish));
             if (_account != address(0)) {
-                StakeInfo memory _stakeInfo = _stakeInfos[_account][_index];
+                StakeInfo memory _stakeInfo = _stakeInfos[_account][_index]; //q- what if index is not found? //a- nothing happens
                 uint256 vestingRate = _getVestingRate(_stakeInfo);
                 claimableRewards[_account][_index] = _earned(_stakeInfo, _account, _index);
                 userRewardPerTokenPaid[_account][_index] = vestingRate * uint256(rewardData.rewardPerTokenStored) / 1e18;

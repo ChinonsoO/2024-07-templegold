@@ -58,6 +58,7 @@ contract TempleGoldAdmin is ITempleGoldAdmin, TempleElevatedAccess {
      * @param _contract Contract address to whitelist
      * @param _whitelist Boolean whitelist state
      */
+    //q- Do we check if a contract is whitlisted?
     function authorizeContract(address _contract, bool _whitelist) external override onlyElevatedAccess {
         templeGold.authorizeContract(_contract, _whitelist);
     } 
@@ -66,6 +67,7 @@ contract TempleGoldAdmin is ITempleGoldAdmin, TempleElevatedAccess {
      * @notice Set distribution percentages of newly minted Temple Gold
      * @param _params Distribution parameters
      */
+     //q- What are the distribution parameters?
     function setDistributionParams(ITempleGold.DistributionParams memory _params) external override onlyElevatedAccess {
        templeGold.setDistributionParams(_params);
     }
@@ -74,6 +76,7 @@ contract TempleGoldAdmin is ITempleGoldAdmin, TempleElevatedAccess {
      * @notice Set vesting factor
      * @param _factor Vesting factor
      */
+     //q- What is the vesting factor?
     function setVestingFactor(ITempleGold.VestingFactor memory _factor) external override onlyElevatedAccess {
         templeGold.setVestingFactor(_factor);
     }
@@ -93,6 +96,7 @@ contract TempleGoldAdmin is ITempleGoldAdmin, TempleElevatedAccess {
      * @dev Sets the preCrime contract address.
      * @param _preCrime The address of the preCrime contract.
      */
+     //q- What is the preCrime contract?
     function setPreCrime(address _preCrime) public virtual onlyElevatedAccess {
         IOAppPreCrimeSimulator(address(templeGold)).setPreCrime(_preCrime);
     }

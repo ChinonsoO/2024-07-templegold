@@ -14,6 +14,8 @@ library EpochLib {
         return info.endTime <= block.timestamp;
     }
 
+    //q- hasStarted seems odd, is this not the same as isActive?
+    //q- what is the difference between hasStarted and isActive?
     function hasStarted(IAuctionBase.EpochInfo storage info) internal view returns (bool) {
         return info.startTime > 0 && block.timestamp >= info.startTime;
     }

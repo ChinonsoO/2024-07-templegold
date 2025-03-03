@@ -34,10 +34,13 @@ contract SpiceAuction is ISpiceAuction, AuctionBase {
     address public override daoExecutor;
 
     /// @notice Auctions run for minimum 1 week
+    //q- Do we check for minimum auction period in the contract?
     uint32 public constant MINIMUM_AUCTION_PERIOD = 1 weeks;
     /// @notice Maximum wait period between last and next auctions
+    //q- Do we check for maximum auction wait period in the contract?
     uint32 public constant MAXIMUM_AUCTION_WAIT_PERIOD = 90 days;
     /// @notice Maximum auction duration
+    //q- Do we check for maximum auction duration in the contract?
     uint32 public constant MAXIMUM_AUCTION_DURATION = 30 days;
 
     /// @notice Name of this Spice Bazaar auction
@@ -81,6 +84,11 @@ contract SpiceAuction is ISpiceAuction, AuctionBase {
      * @dev Must be set before epoch auction starts
      * @param _config Config to set
      */
+    
+    
+    //@audit - We don't check if IsTempleGoldAuctionToken is set to true or false.
+    //@audit - We dont check if the recipient is set to a valid address.
+    //@audit - we don't check if recipient is a whitelisted address when templeGold is the bid token.
     function setAuctionConfig(SpiceAuctionConfig calldata _config) external onlyDAOExecutor {
         /// @dev epoch Id is only updated when auction starts. 
         /// @dev cannot set config for past or ongoing auction
@@ -98,12 +106,15 @@ contract SpiceAuction is ISpiceAuction, AuctionBase {
             || _config.minimumDistributedAuctionToken == 0) { revert CommonEventsAndErrors.ExpectedNonZero(); }
         if (_config.recipient == address(0)) { revert CommonEventsAndErrors.InvalidAddress(); }
 
-        currentEpochIdCache += 1;
+        currentEpochIdCache += 1; // we're setting config for next epoch
         auctionConfigs[currentEpochIdCache] = _config;
         emit AuctionConfigSet(currentEpochIdCache, _config);
     }
 
     /// @notice Remove auction config set for last epoch
+
+    //q- We're reomving the most recently set auction config.
+
     function removeAuctionConfig() external override onlyDAOExecutor {
         /// only delete latest epoch if auction is not started
         uint256 id = _currentEpochId;
@@ -166,7 +177,8 @@ contract SpiceAuction is ISpiceAuction, AuctionBase {
         // now update currentEpochId
         epochId = _currentEpochId = _currentEpochId + 1;
         EpochInfo storage info = epochs[epochId];
-        uint128 startTime = info.startTime = uint128(block.timestamp) + config.startCooldown;
+        uint128 startTime = info.startTime = uint128(block.timestamp) + config.startCooldown; //q- I don't understand why we're adding startCooldown to the current time.
+        //a- StartCoolDown is more like countdown to allowing bids, so we're setting the start time to the current time plus the startCooldown.
         uint128 endTime = info.endTime = startTime + config.duration;
         info.totalAuctionTokenAmount = epochAuctionTokenAmount;
         // Keep track of total allocation auction tokens per epoch
@@ -192,11 +204,16 @@ contract SpiceAuction is ISpiceAuction, AuctionBase {
         (address bidToken,) = _getBidAndAuctionTokens(config);
         address _recipient = config.recipient;
         uint256 _bidTokenAmountBefore = IERC20(bidToken).balanceOf(_recipient);
-        IERC20(bidToken).safeTransferFrom(msg.sender, _recipient, amount);
+        IERC20(bidToken).safeTransferFrom(msg.sender, _recipient, amount); //q- Shouldn't this be address(this) instead of _recipient?
+        //a- No because we're dealing with the bid token, not the auction token, and nowhere were elese in the contract do we mix up the two.
+        //q- do we check if the recipient is a whitelisted address when templeGold is the bid token? Do we whitelist the recipient address???
         uint256 _bidTokenAmountAfter = IERC20(bidToken).balanceOf(_recipient);
         // fee on transfer tokens
+        
+        //@audit - An attacker can front-run the bid function by sending a small amount of tokens to the recipient address before the bid function is called.
+        //this will cause the bid function to fail because the amount of tokens received by the recipient address will be greater than the amount of tokens sent by the user.
         if (amount != _bidTokenAmountAfter - _bidTokenAmountBefore) { revert CommonEventsAndErrors.InvalidParam(); }
-        depositors[msg.sender][epochId] += amount;
+        depositors[msg.sender][epochId] += amount;  
 
         info.totalBidTokenAmount += amount;
         emit Deposit(msg.sender, epochId, amount);
@@ -218,7 +235,8 @@ contract SpiceAuction is ISpiceAuction, AuctionBase {
         SpiceAuctionConfig storage config = auctionConfigs[epochId];
         (, address auctionToken) = _getBidAndAuctionTokens(config);
 
-        uint256 claimAmount = bidTokenAmount.mulDivRound(info.totalAuctionTokenAmount, info.totalBidTokenAmount, false);
+        uint256 claimAmount = bidTokenAmount.mulDivRound(info.totalAuctionTokenAmount, info.totalBidTokenAmount, false); //we're only passing in 3 arguments, but the function takes 4.
+        //a- In solidity, when using library functions and dot notation the left hand expression is passed as the first argument to the function.
         /// checkpoint claim for auction token
         _claimedAuctionTokens[auctionToken] += claimAmount;
         IERC20(auctionToken).safeTransfer(msg.sender, claimAmount);

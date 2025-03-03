@@ -62,11 +62,14 @@ contract DaiGoldAuction is IDaiGoldAuction, AuctionBase, TempleElevatedAccess {
      * @param _config Auction configuration
      */
     function setAuctionConfig(AuctionConfig calldata _config) external override onlyElevatedAccess {
-        if (_config.auctionStartCooldown == 0
+        if (_config.auctionStartCooldown == 0 //q why is auctionStartCooldown not made to be auctionoo duration.
                 || _config.auctionMinimumDistributedGold == 0
                 || _config.auctionsTimeDiff == 0) 
             { revert CommonEventsAndErrors.ExpectedNonZero(); }
-        if (!epochs[_currentEpochId].hasEnded()) { revert InvalidOperation(); }
+        if (!epochs[_currentEpochId].hasEnded()) { revert InvalidOperation(); } //q- We're reverting if the current epoch has not ended. Why???
+        //a- We're reverting if the current epoch has not ended because we don't want to change the auction configuration while the auction is live.
+        //q- why not use .isActive() instead of .hasEnded()?
+        //q- what is the point of changing the auction configuration after the epoch has ended?
         auctionConfig = _config;
 
         emit AuctionConfigSet(_currentEpochId, _config);
@@ -111,7 +114,7 @@ contract DaiGoldAuction is IDaiGoldAuction, AuctionBase, TempleElevatedAccess {
             revert CannotStartAuction();
         }
         _distributeGold();
-        uint256 totalGoldAmount = nextAuctionGoldAmount;
+        uint256 totalGoldAmount = nextAuctionGoldAmount; //q- Shouldn't this be += instead of =?
         nextAuctionGoldAmount = 0;
         uint256 epochId = _currentEpochId = _currentEpochId + 1;
         
@@ -119,7 +122,7 @@ contract DaiGoldAuction is IDaiGoldAuction, AuctionBase, TempleElevatedAccess {
 
         EpochInfo storage info = epochs[epochId];
         info.totalAuctionTokenAmount = totalGoldAmount;
-        uint128 startTime = info.startTime = uint128(block.timestamp) + config.auctionStartCooldown;
+        uint128 startTime = info.startTime = uint128(block.timestamp) + config.auctionStartCooldown; //allowing deposits for the period of auctionStartCooldown
         uint128 endTime = info.endTime = startTime + AUCTION_DURATION;
 
         emit AuctionStarted(epochId, msg.sender, startTime, endTime, totalGoldAmount);
@@ -132,7 +135,9 @@ contract DaiGoldAuction is IDaiGoldAuction, AuctionBase, TempleElevatedAccess {
     function bid(uint256 amount) external virtual override onlyWhenLive {
         if (amount == 0) { revert CommonEventsAndErrors.ExpectedNonZero(); }
 
-        bidToken.safeTransferFrom(msg.sender, treasury, amount);
+        //q- Did we check if msg.value == amount?
+        //a- No, we're not accepting ETH. We're accepting only ERC20 tokens. If this was ever changed to accept ETH, we would need to check msg.value == amount.
+        bidToken.safeTransferFrom(msg.sender, treasury, amount); 
 
         uint256 epochIdCache = _currentEpochId;
         depositors[msg.sender][epochIdCache] += amount;
@@ -271,7 +276,7 @@ contract DaiGoldAuction is IDaiGoldAuction, AuctionBase, TempleElevatedAccess {
             return;
         }
 
-        // auction started but cooldown pending
+        // auction started but cooldown pending - q- Is this scenario possible?
         uint256 epochId = _currentEpochId;
         EpochInfo storage info = epochs[epochId];
         if (info.startTime == 0) { revert InvalidOperation(); }

@@ -96,6 +96,9 @@ contract TempleTeleporter is ITempleTeleporter, OApp {
     /// @dev Called when data is received from the protocol. It overrides the equivalent function in the parent contract.
     /// Protocol messages are defined as packets, comprised of the following parameters.
     /// @param _payload Encoded message.
+
+    //q- Called when data is received from which protocol??
+    //a- Is this for when the temple token is recieved at arbitrum?
     function _lzReceive(
         Origin calldata /*_origin*/,
         bytes32 /*_guid*/,

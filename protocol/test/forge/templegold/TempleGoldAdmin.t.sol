@@ -37,7 +37,7 @@ contract TempleGoldAdminTestBase is TempleGoldCommon {
     uint256 public mainnetForkId;
 
     function setUp() public {
-        fork("arbitrum_one", forkBlockNumber);
+        fork("arbitrum_one_sepolia", forkBlockNumber);
         arbitrumOneForkId = forkId;
 
         ITempleGold.InitArgs memory initArgs = _getTempleGoldInitArgs();

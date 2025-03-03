@@ -4,11 +4,20 @@
   verbosity = 3
   src = 'contracts'
   out = 'artifacts-foundry'
-  libs = ['node_modules', '../lib']
+  libs = ['node_modules', 'lib']
   test = 'test/forge'
   cache_path = 'cache-foundry'
   gas_reports = ["*"]
   evm_version = "paris"           # See https://www.evmdiff.com/features?name=PUSH0&kind=opcode
+
+
+[rpc_endpoints]
+# The RPC URLs are modified versions of the default for testing initialization.
+# mainnet = "https://eth-mainnet.alchemyapi.io/v2/WV407BEiBmjNJfKo9Uo_55u0z0ITyCOX" # Different API key.
+# optimism_sepolia = "https://sepolia.optimism.io/" # Adds a trailing slash.
+# arbitrum_one_sepolia = "https://rpc.ankr.com/arbitrum_sepolia/" # Adds a trailing slash.
+arbitrum_one_sepolia = "https://rpc.ankr.com/arbitrum/" # Adds a trailing slash.
+# needs_undefined_env_var = "${UNDEFINED_RPC_URL_PLACEHOLDER}"
 
 [profile.ci]
   fuzz = { runs = 5000, seed = "0x4444" }

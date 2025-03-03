@@ -63,6 +63,7 @@ import { TempleMath } from "contracts/common/TempleMath.sol";
     // if set to `1/ 3 years`, MAX_SUPPLY will be minted in 3 years. It is possible but unlikely vesting factor is changed in future
     VestingFactor private vestingFactor;
 
+    //@audit-low- what of in cases of a hard fork for minting?
     constructor(
         InitArgs memory _initArgs
     ) OFT(_initArgs.name, _initArgs.symbol, _initArgs.layerZeroEndpoint, _initArgs.executor) Ownable(_initArgs.executor){
@@ -141,6 +142,8 @@ import { TempleMath } from "contracts/common/TempleMath.sol";
      * Enforces minimum mint amount and uses vesting factor to calculate mint token amount.
      * Minting is only possible on source chain Arbitrum
      */
+    
+    //q- so anyone can call this mint function and mint new tokens?
     function mint() external override onlyArbitrum {
         VestingFactor memory vestingFactorCache = vestingFactor;
         DistributionParams storage distributionParamsCache = distributionParams;
@@ -185,6 +188,7 @@ import { TempleMath } from "contracts/common/TempleMath.sol";
         return _canDistribute(mintAmount);
     }
 
+    //q- check this with AI later.
     function _canDistribute(uint256 mintAmount) private view returns (bool) {
         return mintAmount != 0 && _totalDistributed + mintAmount == MAX_SUPPLY ? true : mintAmount >= MINIMUM_MINT;
     }
@@ -218,6 +222,7 @@ import { TempleMath } from "contracts/common/TempleMath.sol";
         /// can only transfer to or from whitelisted addreess
         /// @dev skip check on mint and burn. function `send` checks from == to
         if (from != address(0) && to != address(0)) {
+            //q- shouldn't this be an OR condition? //a- no, because we're saying its ok if atleast one of them is authorized
             if (!authorized[from] && !authorized[to]) { revert ITempleGold.NonTransferrable(from, to); }
         }
         super._update(from, to, value);
@@ -246,6 +251,7 @@ import { TempleMath } from "contracts/common/TempleMath.sol";
     }
 
     function _getMintAmount(VestingFactor memory vestingFactorCache) private view returns (uint256 mintAmount) {
+        //q- No checks on numerator and denominator of vesting factor is this bad?
         uint32 _lastMintTimestamp = lastMintTimestamp;
         uint256 totalSupplyCache = _totalDistributed;
         /// @dev if vesting factor is not set, return 0. `_lastMintTimestamp` is set when vesting factor is set
@@ -278,6 +284,9 @@ import { TempleMath } from "contracts/common/TempleMath.sol";
      * @dev overriden to check user only transfers cross-chain
      * Not using super.send() because virtual overwritten function is external and not internal/public
      */
+
+     //q- The _debit function automatically updates the total supply of the token. Is it possible for this update to be out of 
+     //sync with the total supply of the token in this contract?
     function send(
         SendParam calldata _sendParam,
         MessagingFee calldata _fee,
@@ -287,6 +296,8 @@ import { TempleMath } from "contracts/common/TempleMath.sol";
         /// cast bytes32 to address
         address _to = _sendParam.to.bytes32ToAddress();
         /// @dev user can cross-chain transfer to self
+
+        //q- so are we only allowing transfers to self?
         if (msg.sender != _to) { revert ITempleGold.NonTransferrable(msg.sender, _to); }
 
         // @dev Applies the token transfers regarding this send() operation.

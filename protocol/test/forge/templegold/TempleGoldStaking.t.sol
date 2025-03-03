@@ -39,7 +39,7 @@ contract TempleGoldStakingTestBase is TempleGoldCommon {
     TempleGold public templeGold;
 
     function setUp() public {
-        fork("arbitrum_one", forkBlockNumber);
+        fork("arbitrum_one_sepolia", forkBlockNumber);
 
         ITempleGold.InitArgs memory initArgs = _getTempleGoldInitArgs();
 

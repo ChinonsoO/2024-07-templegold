@@ -40,7 +40,7 @@ contract DaiGoldAuctionTestBase is TempleGoldCommon {
 
     function setUp() public {
         /// @dev forking for layerzero endpoint to execute code
-        fork("arbitrum_one", 204026954);
+        fork("arbitrum_one_sepolia", 311612462);
 
         ITempleGold.InitArgs memory initArgs;
         initArgs.executor = executor;
