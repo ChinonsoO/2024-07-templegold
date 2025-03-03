@@ -103,6 +103,9 @@ contract DaiGoldAuction is IDaiGoldAuction, AuctionBase, TempleElevatedAccess {
      * So in `startAuction()`, there is a call to `_distributeGold()` to mint and distribute TGOLD. 
      * Any other `_distributeGold()` calls during auction is tracked for next auction use.
      */
+
+    //@audit-medium In the cases where auction starter is 0 and auctionsTimeDiff is small, it is possible for startAuction to be called 
+    //even though an auction config hasn't yet been set. 
     function startAuction() external override {
         if (auctionStarter != address(0) && msg.sender != auctionStarter) { revert CommonEventsAndErrors.InvalidAccess(); }
         EpochInfo storage prevAuctionInfo = epochs[_currentEpochId];
@@ -114,7 +117,7 @@ contract DaiGoldAuction is IDaiGoldAuction, AuctionBase, TempleElevatedAccess {
             revert CannotStartAuction();
         }
         _distributeGold();
-        uint256 totalGoldAmount = nextAuctionGoldAmount; //q- Shouldn't this be += instead of =?
+        uint256 totalGoldAmount = nextAuctionGoldAmount; 
         nextAuctionGoldAmount = 0;
         uint256 epochId = _currentEpochId = _currentEpochId + 1;
         

@@ -399,7 +399,11 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
      * @param index Index
      */
     //q- why can anyone call this function?
-    //q- Can't we just call getReward for another staker to end their stake early?
+    //q- Can't we just call getReward for another staker to claim their early?
+    //a- yes we can, but this does not withdraw their stake and does not neccesarily cause any harm.
+
+    //@audit-low- allowing third parties to trigger reward distributions for users is not ideal and could have tax implications
+    //and unwanted consequences.
     function getReward(address staker, uint256 index) external override updateReward(staker, index) {
         _getReward(staker, staker, index);
     }

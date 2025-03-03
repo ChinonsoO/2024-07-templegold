@@ -86,9 +86,9 @@ contract SpiceAuction is ISpiceAuction, AuctionBase {
      */
     
     
-    //@audit - We don't check if IsTempleGoldAuctionToken is set to true or false.
-    //@audit - We dont check if the recipient is set to a valid address.
-    //@audit - we don't check if recipient is a whitelisted address when templeGold is the bid token.
+    //@audit - We don't check if IsTempleGoldAuctionToken is set to true or false or if recipient is valid.
+    //q- we don't check if recipient is a whitelisted address when templeGold is the bid token.
+    //We don't need to check if recipient is a whitelisted address, if spiceAuction is whitelisted then we're good.
     function setAuctionConfig(SpiceAuctionConfig calldata _config) external onlyDAOExecutor {
         /// @dev epoch Id is only updated when auction starts. 
         /// @dev cannot set config for past or ongoing auction
@@ -134,6 +134,7 @@ contract SpiceAuction is ISpiceAuction, AuctionBase {
             delete auctionConfigs[id];
             delete epochs[id];
             _currentEpochId = id - 1;
+            //@audit- totalTokenAllocation Should be decremented here. Failure to decrement it then creating a new epoch after will lead to stuck funds.
             emit AuctionConfigRemoved(id, id);
         } else {
             // `auctionStart` is not triggered but `auctionConfig` is set

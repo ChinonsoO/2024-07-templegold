@@ -298,6 +298,7 @@ import { TempleMath } from "contracts/common/TempleMath.sol";
         /// @dev user can cross-chain transfer to self
 
         //q- so are we only allowing transfers to self?
+        //a- yes that is what we're attempting to do.
         if (msg.sender != _to) { revert ITempleGold.NonTransferrable(msg.sender, _to); }
 
         // @dev Applies the token transfers regarding this send() operation.
