@@ -24,8 +24,8 @@ interface ITempleGoldStaking {
     error NoStaker();
 
     struct Reward {
-        uint40 periodFinish;
-        uint216 rewardRate;  // The reward amount (1e18) per total reward duration
+        uint40 periodFinish; //q- when is a period finished??
+        uint216 rewardRate;  // The reward amount (1e18) per total reward duration (Reward/Block)
         uint40 lastUpdateTime;
         uint216 rewardPerTokenStored;
     }

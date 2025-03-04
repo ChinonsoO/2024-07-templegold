@@ -270,7 +270,7 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
         // pull tokens and apply stake
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
         uint256 _lastIndex = _accountLastStakeIndex[_for];
-        _accountLastStakeIndex[_for] = ++_lastIndex;
+        _accountLastStakeIndex[_for] = ++_lastIndex; //q-what is last stake Index for ?
         _applyStake(_for, _amount, _lastIndex);
         _moveDelegates(address(0), delegates[_for], _amount);
     }
@@ -489,7 +489,9 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
             _perTokenReward = _rewardPerToken() * vestingRate / 1e18;
         }
         
-        return
+        //Ok From this it seems the intention is that our debt is userRewardPerTokePaid, but this seems odd in our 
+        //article I had the impression we subtract our debt when a user wants to withdraw.
+
             (_stakeInfo.amount * (_perTokenReward - userRewardPerTokenPaid[_account][_index])) / 1e18 +
             claimableRewards[_account][_index];
     }
@@ -509,6 +511,7 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
         totalSupply += _amount;
         _balances[_for] += _amount;
         _stakeInfos[_for][_index] = StakeInfo(uint64(block.timestamp), uint64(block.timestamp + vestingPeriod), _amount);
+        //q- we say that the full vested time is block.timestamp + vestingPerioud is this correct?
         emit Staked(_for, _amount);
     }
 
@@ -516,6 +519,15 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
         if (totalSupply == 0) {
             return rewardData.rewardPerTokenStored;
         }
+
+        //rewardData.rewardPerTokenStored +
+        //(_lastTimeRewardApplicable(rewardData.periodFinish)) - This should be the last time we updated our rewardPerToken
+        //why are we passing in rewardData.periodFinish?? (this is most likely for vesting rate hmmmm)
+
+        //Assuming period Finish is < block.timestamp this equation tunrns out to 
+
+        //rewardData.rewardPerTokenStored + (block.timestamp - rewardData.lastUpdateTime) * rewardRate( aka reward/block) / totalSuply
+        //This correctly follows our formula
 
         return
             rewardData.rewardPerTokenStored +
@@ -553,6 +565,7 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
         ITempleGold(address(rewardToken)).mint();
     }
 
+    //delegator is me, delegatee is who I'm sending my votes to
     function _delegate(address delegator, address delegatee) internal {
         address currentDelegate = delegates[delegator];
         uint256 delegatorBalance = _balances[delegator];
@@ -602,13 +615,36 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
     modifier updateReward(address _account, uint256 _index) {
         {
             // stack too deep
-            rewardData.rewardPerTokenStored = uint216(_rewardPerToken());
-            rewardData.lastUpdateTime = uint40(_lastTimeRewardApplicable(rewardData.periodFinish));
+            rewardData.rewardPerTokenStored = uint216(_rewardPerToken()); //Update our rewardPerToken 
+            rewardData.lastUpdateTime = uint40(_lastTimeRewardApplicable(rewardData.periodFinish)); //Update our reward Distribution time/ Keep track of how much time has passed.
             if (_account != address(0)) {
-                StakeInfo memory _stakeInfo = _stakeInfos[_account][_index]; //q- what if index is not found? //a- nothing happens
+                StakeInfo memory _stakeInfo = _stakeInfos[_account][_index];
                 uint256 vestingRate = _getVestingRate(_stakeInfo);
+                //our claimable rewards should be then rewardPerToken * account Balance
                 claimableRewards[_account][_index] = _earned(_stakeInfo, _account, _index);
-                userRewardPerTokenPaid[_account][_index] = vestingRate * uint256(rewardData.rewardPerTokenStored) / 1e18;
+                
+
+                //Lets say our vesting period is 10 hours, our rewardPerHour is 100, and our user stakes 50 Token
+                //Initially our vesting rate is 0% so this does 0 * x = 0 (look at below line of code)
+                //so Intially userRewardPerTokenPaid is 0, and our global rewardPerToken is 0
+
+                //At T=5(hours), Lets say our user deposits and we update state. We expect our user to be half vested, with a vesting rate of 50%.
+                //We have accumulated 500 Reward (100 * 5) and so our reward per Token is 500 Reward / 50 Token = 10 RPT
+                
+                //The below code says that our UserRewardPerTokenPaid 0.5 * 10 = 5RPT
+
+                //_perTokenReward = RPT * vestingRate = 5 * 0.5 = 2.5
+
+                //The above code says our user earned 50 * (5 - 2.5) = 125
+
+                //At T=6, our user updates state again. In that time we got 100RewardPerHour.
+                //So we accumulated 100 Reward and our TotalReward is 500+ 100 = 600, and our RPT is 600/50 = 12
+                // so our UserRewardPerTokenPaid is 0.6 * 12 = 6RPT.
+                //_perTokenReward = RPT * vestingRate = 6 * 0.6 = 3.6
+
+                //our above code says we earned 50 * (6 - 3.6) = 270 
+                
+                userRewardPerTokenPaid[_account][_index] = vestingRate * uint256(rewardData.rewardPerTokenStored) / 1e18; 
             }
         }
         _;
