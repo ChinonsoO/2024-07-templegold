@@ -506,6 +506,23 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
             vestingRate = 1e18;
         } else {
             vestingRate = (block.timestamp - _stakeInfo.stakeTime) * 1e18 / vestingPeriod;
+            //@audit - The contract always uses the global vesting period, instead of the vesting period that was in effect when the user
+            //originally stakes. So if the vesting period is later reduced this rate can become grateer than one, or if increased
+            //cause the user to see a drop in their expected rewards.
+
+            //Ex- Bob stakes for 50 token and the current vesting period is 10 hours
+
+            //After five hour Bob's vesting rate is 5/10 = 0.5
+
+            //Lets say the devs change the vesting period to 5 hours
+
+            //An hour passes and bob's vesting rate is not 6/5 = 1.2 <------- OVER ONE BAD!!!
+
+            //Notice how our vesting rate is now over one because we use the global vesting period instead of a 
+            //stake specific vesting period.
+
+            //Our mitigation is should be 
+
         }
     }
 
@@ -513,7 +530,7 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
         totalSupply += _amount;
         _balances[_for] += _amount;
         _stakeInfos[_for][_index] = StakeInfo(uint64(block.timestamp), uint64(block.timestamp + vestingPeriod), _amount);
-        //q- we say that the full vested time is block.timestamp + vestingPerioud is this correct?
+        
         emit Staked(_for, _amount);
     }
 
@@ -538,13 +555,30 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
                 rewardData.rewardRate * 1e18)
                 / totalSupply);
     }
+    
+
+    //rewardData.periodFinish is the end of our distribution period. Each distribution period has a certain reward rate
+    //|------|
+    //2      10
+
+    //With the above text illustration, the reward Duration is 8 while our periodFinish is 10, in the cases of updating our period
+    //finish it looks like the below. 5 is when we update our reward and 13 is extending the peroid finish by our rewardDuration.
+
+    //When we come back and multiply the rewardDuration by our new rewardRate we get back leftover + amount.
+    
+    //|---!--| -------!
+    //2   5  10       13
 
     function _notifyReward(uint256 amount) private {
         if (block.timestamp >= rewardData.periodFinish) {
+            //If reward period is over we calculate a new reward rate
             rewardData.rewardRate = uint216(amount / rewardDuration);
             // collect dust
             nextRewardAmount = amount - (rewardData.rewardRate * rewardDuration);
         } else {
+
+            //If our rewardPeriod is not over we take the newly added rewards and use that to update our rewardRate based on how much
+            //time is left in our period.
             uint256 remaining = uint256(rewardData.periodFinish) - block.timestamp;
             uint256 leftover = remaining * rewardData.rewardRate;
             rewardData.rewardRate = uint216((amount + leftover) / rewardDuration);
@@ -552,7 +586,9 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
             nextRewardAmount = (amount + leftover) - (rewardData.rewardRate * rewardDuration);
         }
         rewardData.lastUpdateTime = uint40(block.timestamp);
-        rewardData.periodFinish = uint40(block.timestamp + rewardDuration);
+        //@audit- Someone can call this function indefinitely by calling distribut rewards to stop periodFInish from ever being elapsed.
+        //THIS IS BAD BECAUSE WE NEED BLOCK.timestamp > periodFinish to set a new vesting period and new reward Duration!!!
+        rewardData.periodFinish = uint40(block.timestamp + rewardDuration); 
     }
 
     function _lastTimeRewardApplicable(uint256 _finishTime) internal view returns (uint256) {
