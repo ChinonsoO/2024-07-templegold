@@ -484,14 +484,16 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
         }
         uint256 _perTokenReward;
         if (vestingRate == 1e18) { 
+            //If our vesting period is over, we can just calculate the reward per token
             _perTokenReward = _rewardPerToken();
         } else { 
+            //We apply the vesting rate to our reward per token
+            //suppose our reward per token is 5, and our vesting rate is 0.5, then our rewardPerToken for this index is 2.5
             _perTokenReward = _rewardPerToken() * vestingRate / 1e18;
-        }
-        
-        //Ok From this it seems the intention is that our debt is userRewardPerTokePaid, but this seems odd in our 
-        //article I had the impression we subtract our debt when a user wants to withdraw.
 
+        }
+
+            //UserRewardPerTokenPaid is meant to represent reward debt. At the time of someone withdrawing subtract their reward debt from their claimable rewards
             (_stakeInfo.amount * (_perTokenReward - userRewardPerTokenPaid[_account][_index])) / 1e18 +
             claimableRewards[_account][_index];
     }
@@ -631,18 +633,22 @@ contract TempleGoldStaking is ITempleGoldStaking, TempleElevatedAccess, Pausable
                 //At T=5(hours), Lets say our user deposits and we update state. We expect our user to be half vested, with a vesting rate of 50%.
                 //We have accumulated 500 Reward (100 * 5) and so our reward per Token is 500 Reward / 50 Token = 10 RPT
                 
+
+                //_perTokenReward = RPT * vestingRate = 10 * 0.5 = 2.5
+
+                //The above code says our user earned 50 * (5 - 0) + 0 = 250 = claimableRewards
+
                 //The below code says that our UserRewardPerTokenPaid 0.5 * 10 = 5RPT
-
-                //_perTokenReward = RPT * vestingRate = 5 * 0.5 = 2.5
-
-                //The above code says our user earned 50 * (5 - 2.5) = 125
 
                 //At T=6, our user updates state again. In that time we got 100RewardPerHour.
                 //So we accumulated 100 Reward and our TotalReward is 500+ 100 = 600, and our RPT is 600/50 = 12
-                // so our UserRewardPerTokenPaid is 0.6 * 12 = 6RPT.
-                //_perTokenReward = RPT * vestingRate = 6 * 0.6 = 3.6
 
-                //our above code says we earned 50 * (6 - 3.6) = 270 
+                //_perTokenReward = RPT * vestingRate = 12 * 0.6 = 7.2
+
+                //So we earned 50 * (7.2 - 5) = 110 <-----------------------  Our claimble rewards are not 110 + 250 = 360, whichis what we expect (0.6 * 600 = 360)
+
+                // so our UserRewardPerTokenPaid is 0.6 * 12 = 7.2RPT.
+        
                 
                 userRewardPerTokenPaid[_account][_index] = vestingRate * uint256(rewardData.rewardPerTokenStored) / 1e18; 
             }
